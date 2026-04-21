@@ -191,3 +191,103 @@ Functions in fn-taskflow-amine:
 ```
 
 > 📸 _Insérez ici une capture d'écran d'un email de notification correspondant à l'alerte effectivement reçu dans votre boîte de messagerie._
+
+<br>
+
+# 5: Azure Functions — Logique métier
+
+## Les choix techniques faits
+
+- **Azure Functions (HTTP Trigger)** : Choix de centraliser la logique métier complexe en dehors du Back-end principal de Supabase, en la répartissant dans des API _Serverless_ indépendantes.
+- **Node.js avec ES Modules** : Utilisation de la flexibilité et syntaxe moderne de JavaScript (`import`/`export`) pour le code des fonctions, améliorant la lisibilité et permettant la transition depuis `CommonJS`.
+- **Microservices** : Séparation des responsabilités applicatives en trois fonctions distinctes et ciblées : `manage-members`, `validate-task` et `project-stats`.
+- **Supabase API** : Appels directs à l'API Rest de Supabase à l'aide de données sécurisées d'environnement (`SERVICE_ROLE_KEY`) afin de réaliser les vérifications et écritures globales.
+
+---
+
+## Les URLs des services déployés
+
+- **Supabase URL** : `https://vhccaaizwicoqvqsjzyw.supabase.co`
+- **Endpoints Logic Métier (Azure)** : 
+  - `https://fn-taskflow-amine.azurewebsites.net/api/manage-members`
+  - `https://fn-taskflow-amine.azurewebsites.net/api/validate-task`
+  - `https://fn-taskflow-amine.azurewebsites.net/api/project-stats`
+
+---
+
+## Les captures d'écran des services qui tournent
+
+**Exécution Locale / Test depuis un client (Postman/ThunderClient) :**
+> 📸 _Insérez ici une capture du terminal avec `func start` listant toutes vos nouvelles fonctions métier en attente d'appels, ou une requête validée par l'une des APIs._
+
+---
+
+## Ce qui a marché, ce qui a bloqué et comment ça a été résolu
+
+### Ce qui a marché
+- La restructuration du code en plusieurs dossiers pour scinder et organiser la logique métier par nom et rôle.
+- La réussite des requêtes asynchrones en isolant les logiques de traitement.
+
+### Ce qui a bloqué
+- **Les Imports Node.js en ES Modules (`SyntaxError`)** : La volonté de se délaisser des `require()` historiques de CommonJS pour utiliser le mot-clé standard `import` a immédiatement levé l'erreur `Cannot use import statement outside a module` par le moteur V8 de Node.js embarqué dans Azure Functions.
+
+### Comment ça a été résolu
+- Pour corriger ce comportement, nous avons dû configurer l'ensemble du projet de notre application _Functions_ en ajoutant explicitement le marqueur `"type": "module"` situé à la racine de l'application dans l'index du fichier `package.json`.
+
+---
+
+## Ce que nous avons fait
+
+1. **Configuration projet** : Refactorisation de l'outil Azure vers les ES Modules en intégrant le tag du module dans le `package.json`.
+2. **`manage-members`** : Création d'une API permettant de gérer l'ajout, la suppression et possiblement la permission des membres sur les différents projets concernés.
+3. **`validate-task`** : Implémentation de conditions métier avant l'injection en base. Bloquant par exemple la complétion d'une tâche si des contraintes propres à l'application ne sont pas remplies.
+4. **`project-stats`** : Fonction analytique interrogeant les tables pour formater une agrégation de l'étendue de complétion des projets (statistiques d'avancement, quantité de tickets, etc), pour servir le frontend d'une donnée propre et calculée, plutôt que de tout l'incomber au client.
+
+---
+
+## La commande ou le code clé qui a débloqué
+
+Le point-clé a été la configuration pure du projet Node : 
+
+Dans le fichier `package.json` :
+```json
+{
+  "name": "taskflow-functions",
+  "version": "1.0.0",
+  "type": "module", 
+  "scripts": { ... }
+}
+```
+
+Et la standardisation syntaxique sur tous les points d'entrées (`index.js`) de nos fonctions :
+```javascript
+// Les imports ES Modules au lieu de require()
+import { Resend } from 'resend';
+
+// Déclaration de Function Export
+export default async function (context, req) {
+    // Logique traitée ...
+}
+```
+
+---
+
+## Une capture d'écran ou un output de terminal
+
+**Output listant les fonctions métier initialisées :**
+
+```bash
+$ func start
+Found the following functions:
+Host lock lease acquired by instance ID '00000000000000000000000021A5'.
+[2026-04-21T13:58:12.632Z] Worker process started and initialized.
+
+Functions:
+
+	manage-members: [POST,GET] http://localhost:7071/api/manage-members
+	notify-assigned: [POST,GET] http://localhost:7071/api/notify-assigned
+	project-stats: [POST,GET] http://localhost:7071/api/project-stats
+	validate-task: [POST,GET] http://localhost:7071/api/validate-task
+
+For detailed output, run func with --verbose flag.
+```
