@@ -1,6 +1,11 @@
 import { Resend } from 'resend';
+import 'dotenv/config';
 
-const resend = new Resend('re_HQuHjRV7_BvrLnzeTa72HGcF6PwM7zqt4'); // La clé de l'environnement
+const resendApiKey = process.env.RESEND_API_KEY;
+if (!resendApiKey) {
+  throw new Error('RESEND_API_KEY manquant dans l environnement');
+}
+const resend = new Resend(resendApiKey);
 
 async function testMail() {
   try {
