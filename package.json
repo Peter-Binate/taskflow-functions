@@ -21,8 +21,10 @@
   },
   "homepage": "https://github.com/Peter-Binate/taskflow-functions#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.104.0",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "resend": "^6.12.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
