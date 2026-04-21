@@ -1,4 +1,4 @@
-const { Resend } = require('resend')
+import { Resend } from 'resend'
 
 const resend   = new Resend(process.env.RESEND_API_KEY)
 const SUPA_URL = process.env.SUPABASE_URL
@@ -42,7 +42,7 @@ async function insertNotification(userId, type, title, body, metadata) {
   })
 }
 
-module.exports = async function (context, req) {
+export default async function (context, req) {
   const payload = req.body
 
   // Ignorer tout ce qui n'est pas un UPDATE

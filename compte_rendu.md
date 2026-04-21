@@ -190,4 +190,113 @@ Functions in fn-taskflow-amine:
         Invoke url: https://fn-taskflow-amine.azurewebsites.net/api/notify-assigned
 ```
 
-> 📸 _Insérez ici une capture d'écran d'un email de notification correspondant à l'alerte effectivement reçu dans votre boîte de messagerie._
+<br>
+
+# 6: Intégration finale et pipeline complet
+
+## Les choix techniques faits
+
+- **Déploiement unique de la Function App** : publication groupée des fonctions `manage-members`, `validate-task`, `project-stats`, `notify-assigned` sur `fn-taskflow-amine`.
+- **Compatibilité runtime Node/Azure** : standardisation complète des fonctions en ES Modules (`import` / `export default`) pour correspondre au `type: module` du projet.
+- **Séparation des privilèges Supabase** : client anonyme pour authentifier le porteur du token, client admin (`SUPABASE_SERVICE_KEY`) pour les opérations transverses (membership, stats, notifications).
+- **Observabilité cloud** : diagnostic des erreurs via Azure CLI (`appsettings`, App Insights query, publish logs) pour corriger rapidement les 404/500.
+
+---
+
+## Les URLs des services déployés
+
+- **Function App** : `fn-taskflow-amine` (Italy North)
+- **Base API** : `https://fn-taskflow-amine-aeh3fxg5b2b7e2bu.italynorth-01.azurewebsites.net/api`
+- **Routes déployées** :
+  - `.../manage-members`
+  - `.../validate-task`
+  - `.../project-stats`
+  - `.../notify-assigned`
+- **Supabase URL** : `https://vhccaaizwicoqvqsjzyw.supabase.co`
+
+---
+
+## Les captures d'écran des services qui tournent
+
+- Capture de la publication Azure (`func azure functionapp publish fn-taskflow-amine`) avec la liste des 4 endpoints.
+- Capture du groupe de ressources `rg-taskflow` montrant Function App + Storage + Insights.
+- Capture d'Application Insights montrant la disparition des erreurs de chargement après migration ESM.
+
+---
+
+## Ce qui a marché, ce qui a bloqué et comment ça a été résolu
+
+### Ce qui a marché
+
+- Publication réussie des 4 Azure Functions.
+- Exécution des fonctions métier depuis le script d'intégration client.
+- Calcul de stats projet et notifications opérationnels après corrections.
+
+### Ce qui a bloqué
+
+1. **Échec de chargement des fonctions** (`require is not defined in ES module scope`).
+2. **Erreur 500 `manage-members`** liée à une variable manquante dans App Settings (`SUPABASE_ANON_KEY`).
+3. **Erreur 400 `validate-task`** sur la vérification d'appartenance membre, impactée par RLS.
+
+### Comment ça a été résolu
+
+- Migration de tous les handlers vers ES Modules.
+- Ajout de `SUPABASE_ANON_KEY` dans les settings de la Function App Azure.
+- Vérification `project_members` dans `validate-task` effectuée avec le client admin (`SUPABASE_SERVICE_KEY`) au lieu du client utilisateur.
+
+---
+
+## Ce que nous avons fait
+
+1. Correction du code des 4 fonctions pour le runtime Azure.
+2. Redéploiement itératif avec `func azure functionapp publish`.
+3. Validation des erreurs runtime via App Insights et correction ciblée.
+4. Réexécution du scénario intégration jusqu'à un flux complet fonctionnel.
+5. Nettoyage final de l'infrastructure Azure après validation.
+
+---
+
+## La commande ou le code clé qui a débloqué
+
+Commande de publication :
+
+```bash
+func azure functionapp publish fn-taskflow-amine
+```
+
+Commande de diagnostic clé :
+
+```bash
+az monitor app-insights query --app fn-taskflow-amine --resource-group rg-taskflow --analytics-query "exceptions | where timestamp > ago(30m)"
+```
+
+Correction clé dans `validate-task` :
+
+```javascript
+const adminClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+const { data: membership } = await adminClient
+  .from('project_members')
+  .select('user_id')
+  .eq('project_id', project_id)
+  .eq('user_id', assigned_to)
+  .single()
+```
+
+---
+
+## Une capture d'écran ou un output de terminal
+
+Output de publication réussi :
+
+```bash
+$ func azure functionapp publish fn-taskflow-amine
+Getting site publishing info...
+Upload completed successfully.
+Deployment completed successfully.
+Syncing triggers...
+Functions in fn-taskflow-amine:
+    manage-members - [httpTrigger]
+    notify-assigned - [httpTrigger]
+    project-stats - [httpTrigger]
+    validate-task - [httpTrigger]
+```

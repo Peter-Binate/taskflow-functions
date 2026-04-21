@@ -1,6 +1,6 @@
-const { createClient } = require('@supabase/supabase-js')
+import { createClient } from '@supabase/supabase-js'
 
-module.exports = async function (context, req) {
+export default async function (context, req) {
 
   const authHeader = req.headers['authorization']
   if (!authHeader) {
@@ -12,6 +12,10 @@ module.exports = async function (context, req) {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_ANON_KEY,
     { global: { headers: { Authorization: authHeader } } }
+  )
+  const adminClient = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
   )
 
   const { project_id, title, due_date, assigned_to } = req.body ?? {}
@@ -28,7 +32,7 @@ module.exports = async function (context, req) {
     errors.push("La date d'échéance ne peut pas être dans le passé")
 
   if (assigned_to) {
-    const { data: membership } = await supabase
+    const { data: membership } = await adminClient
       .from('project_members')
       .select('user_id')
       .eq('project_id', project_id)

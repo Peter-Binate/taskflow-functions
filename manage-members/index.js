@@ -1,7 +1,7 @@
 // manage-members/index.js
-const { createClient } = require('@supabase/supabase-js')
+import { createClient } from '@supabase/supabase-js'
 
-module.exports = async function (context, req) {
+export default async function (context, req) {
 
   // Vérifier que l'utilisateur est authentifié
   const authHeader = req.headers['authorization']

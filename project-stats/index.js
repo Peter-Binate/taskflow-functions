@@ -1,6 +1,6 @@
-const { createClient } = require('@supabase/supabase-js')
+import { createClient } from '@supabase/supabase-js'
 
-module.exports = async function (context, req) {
+export default async function (context, req) {
 
   const projectId = req.query.project_id
   if (!projectId) {
